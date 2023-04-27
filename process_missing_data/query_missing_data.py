@@ -63,14 +63,14 @@ def query_missing_data(path: str, section: str):
                     'Ouedraogo carine', 'OUEDRAOGO carine', 'OUEDRAOGO CARINE', 'SOMBIE FATIMA', 'sombié fatima', 'SOMBIE', 'SOMBIE Fatima',
                     'SOMBIE FATIMA', 'SOMBIE Fatima Madiamsé']
 
-    iter_csv = pd.read_csv(path, iterator=True, chunksize=1000)
+    iter_csv = pd.read_csv(path)
     iter_csv[["Event date", "Enrollment date"]] = iter_csv[["Event date", "Enrollment date"]].apply(pd.to_datetime)
-    df = pd.concat([chunk[chunk['Event data'] > datetime(2022, 9, 9) & (chunk['Nom de l\'investigateur'].isin(investigateurs))] for chunk in iter_csv])
+    df = iter_csv[(iter_csv['Event date'] > datetime(2022, 9, 9)) & (iter_csv['Nom de l\'investigateur'].isin(investigateurs))]
 
     df_queries = pd.DataFrame(columns=['Code Echantillon', 'Nom de l\'investigateur', 'District sanitaire', 'Valeur actuelle', 'Erreurs/Confirmations', 'Actions', 'Section', 'Valeur souhaitée', 'Observations'])
     # iterate through each row and select
     for i in df.index:
-        if section == 'Section 1':  
+    #    if section == 'Section 1':  
     #         # =========================== Check des TYPE DE RESIDENCE =============================
     #         if df['Residence type'][i] is np.nan:
     #             residence_query = pd.DataFrame(data={
@@ -131,7 +131,8 @@ def query_missing_data(path: str, section: str):
     #             })
     #             df_queries = pd.concat([df_queries, district_query], ignore_index=True) 
         
-        elif section == 'Section 2':
+    #   elif section == 'Section 2':
+        if section == 'Section 2':
     #         # =========================== Check des COORDONNEES GPS =============================
     #         if np.isnan(df["Geometry"][i]):
     #             geometry_query = pd.DataFrame(data={
