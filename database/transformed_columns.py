@@ -22,7 +22,6 @@ def transformed_columns():
         "Quartier/Secteur": "quartier_secteur",
         "Residence type": "residence",
         "Coordonnées GPS": "coords_gps",
-        "Geometry": "geometrie",
         "Nom du père /de la mère/du tuteur": "nom_tuteur",
         "N° téléphone du patient ou des parents": "numero_patient_ou_tuteur",
         "COVID Mail": "email",

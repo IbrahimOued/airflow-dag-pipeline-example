@@ -11,7 +11,7 @@ import os
 from pathlib import Path
 import pandas as pd
 import numpy as np
-
+import time
 from datetime import datetime, timedelta
 
 default_args = {
@@ -36,9 +36,9 @@ def afroscreen_data_processing():
             
             @task()
             def read_bobo_csv_files():
-                converter = {'Code Echantillon': str, 'Geometry': str, 'COVID Temperature': float}
+                converter = {'Code Echantillon': str, 'COVID Temperature': float}
                 # list of the columns to drop
-                cols_to_drop = ['Event', 'Program stage', 'Program instance', 'Longitude', 'Latitude', 'Organisation unit code', 'Organisation unit', 'Tracked entity instance', 'Numero Enregistrement']
+                cols_to_drop = ['Event', 'Program stage', 'Program instance', 'Geometry', 'Longitude', 'Latitude', 'Organisation unit code', 'Organisation unit', 'Tracked entity instance', 'Numero Enregistrement']
                 raw_data_dir = '/home/ibra/documents/afroscreen/raw_data/bobo'
                 cols_section_1 = list(pd.read_csv(os.path.join(raw_data_dir, "1.csv"), nrows=1))
                 cols_section_2 = list(pd.read_csv(os.path.join(raw_data_dir, "2.csv"), nrows=1))
@@ -125,7 +125,7 @@ def afroscreen_data_processing():
                 section_9_path = os.path.join(clean_data_dir, "section_9.csv")
                 section_10_path = os.path.join(clean_data_dir, "section_10.csv")
                 
-                number_of_sections_with_errors = 0
+            #   number_of_sections_with_errors = 0
                 
                 sections_path = [section_1_path, section_2_path, section_3_path, section_4_path, section_5_path, section_6_path, section_7_path, section_8_path, section_9_path, section_10_path]
 
@@ -133,35 +133,39 @@ def afroscreen_data_processing():
                     section = f"Section {i+1}"
                     section_queries = query_missing_data(path=path, section=section)
                     if len(section_queries) > 0:
-                        outname = f"queries_section_{i+1}.xlsx"
+                        outname = f"queries_bobo_section_{i+1}_{time.strftime('%Y%m%d')}.xlsx"
                         outdir = '/home/ibra/documents/afroscreen/queries/bobo'
                         Path(outdir).mkdir(parents=True, exist_ok=True)
                         bobo_queries = os.path.join(outdir, outname)    
                         section_queries.to_excel(bobo_queries)
-                        number_of_sections_with_errors += 1
+            #           number_of_sections_with_errors += 1
 
-                return number_of_sections_with_errors
+            #    return number_of_sections_with_errors
             
-            @task.branch
-            def check_number_of_errors(number_of_sections_with_errors):
-                # return the task id that needs to be run
-                if int(number_of_sections_with_errors) < 0: # > original
-                    return 'bobo.handle_missing_data.copy_queries_generated'
-                else:
-                    return 'bobo.store_data.load_and_merge_data'
+            # @task.branch
+            # def check_number_of_errors(number_of_sections_with_errors):
+            #     # return the task id that needs to be run
+            #     if int(number_of_sections_with_errors) < 0: # > original
+            #         return 'bobo.handle_missing_data.copy_queries_generated'
+            #     else:
+            #         return 'bobo.store_data.load_and_merge_data'
 
-            check_number_of_errors(inspect_missing_data())
+            # check_number_of_errors(inspect_missing_data())
+            inspect_missing_data()
         
         @task_group()
         def handle_missing_data():
             copy_queries_generated = BashOperator(
                 task_id='copy_queries_generated',
-                bash_command="sudo cp /home/ibra/documents/afroscreen/queries/*.xlsx /mnt/hgfs/shared_folder"
+                bash_command="sudo cp /home/ibra/documents/afroscreen/queries/bobo/*.xlsx /mnt/hgfs/shared_folder/queries/bobo"
             )
 
             send_queries_by_email = BashOperator(
                 task_id='send_queries_by_email',
-                bash_command="python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/queries'"
+                # PRODUCTION
+                # bash_command="python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r enqueteur1boboafroscreen@gmail.com enqueteur2boboafroscreen@gmail.com cybar95@gmail.com murielraissa@gmail.com  tiandiogo2002@yahoo.fr brahim.oued@gmail.com --p '/home/ibra/documents/afroscreen/queries/bobo'"
+                # TEST
+                bash_command="python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/queries/bobo'"
             )
 
             copy_queries_generated  >> send_queries_by_email
@@ -171,7 +175,7 @@ def afroscreen_data_processing():
         def store_data():
             @task()
             def load_and_merge_data():
-                converter = {'Code Echantillon': str, 'Geometry': str, 'COVID Temperature': float}
+                converter = {'Code Echantillon': str, 'COVID Temperature': float}
                 # read all the individual files
                 df_section_1 = pd.read_csv('/home/ibra/documents/afroscreen/clean_data/bobo/section_1.csv', converters=converter)
                 df_section_2 = pd.read_csv('/home/ibra/documents/afroscreen/clean_data/bobo/section_2.csv', converters=converter)
@@ -220,7 +224,13 @@ def afroscreen_data_processing():
             def convert_df_to_sql():
                 converter_echantillon = {'code_echantillon': str}
                 df = pd.read_csv('/home/ibra/documents/afroscreen/clean_data/bobo/merged_dhis2_data.csv', converters=converter_echantillon)
-                df = df.fillna('NULL')
+                # create a list of columns to ignore while performing a fillna on text values
+                date_cols = ['date_naissance', 'date_apparition_symptomes', 'date_consultation', 'date_prelevement_echantillon', 'date_debut_traitement']
+                # use the same list of date columns to do a default values 2000-01-01 '2000-01-01 00:00:00.0'
+                df[date_cols] = df[date_cols].fillna('2000-01-01 00:00:00.0')
+                # ignore the list of date elements
+                df = df.fillna('NULL')   
+                
 
                 SOURCE = df
                 TARGET = 'patientsafroscreen'
@@ -259,9 +269,9 @@ def afroscreen_data_processing():
 
             @task()
             def read_ouaga_csv_files():
-                converter = {'Code Echantillon': str, 'Geometry': str, 'COVID Temperature': float}
+                converter = {'Code Echantillon': str, 'COVID Temperature': float}
                 # list of the columns to drop
-                cols_to_drop = ['Event', 'Program stage', 'Program instance', 'Longitude', 'Latitude', 'Organisation unit code', 'Organisation unit', 'Tracked entity instance', 'Numero Enregistrement']
+                cols_to_drop = ['Event', 'Program stage', 'Program instance', 'Geometry', 'Longitude', 'Latitude', 'Organisation unit code', 'Organisation unit', 'Tracked entity instance', 'Numero Enregistrement']
                 raw_data_dir = '/home/ibra/documents/afroscreen/raw_data/ouaga'
                 cols_section_1 = list(pd.read_csv(os.path.join(raw_data_dir, "1_ou.csv"), nrows=1))
                 cols_section_2 = list(pd.read_csv(os.path.join(raw_data_dir, "2_ou.csv"), nrows=1))
@@ -348,7 +358,7 @@ def afroscreen_data_processing():
                 section_9_path = os.path.join(clean_data_dir, "section_9.csv")
                 section_10_path = os.path.join(clean_data_dir, "section_10.csv")
                 
-                number_of_sections_with_errors = 0
+            #    number_of_sections_with_errors = 0
                 
                 sections_path = [section_1_path, section_2_path, section_3_path, section_4_path, section_5_path, section_6_path, section_7_path, section_8_path, section_9_path, section_10_path]
 
@@ -356,35 +366,39 @@ def afroscreen_data_processing():
                     section = f"Section {i+1}"
                     section_queries = query_missing_data(path=path, section=section)
                     if len(section_queries) > 0:
-                        outname = f"queries_section_{i+1}.xlsx"
+                        outname = f"queries_ouaga_section_{i+1}_{time.strftime('%Y%m%d')}.xlsx"
                         outdir = '/home/ibra/documents/afroscreen/queries/ouaga'
                         Path(outdir).mkdir(parents=True, exist_ok=True)                            
                         ouaga_queries = os.path.join(outdir, outname)    
                         section_queries.to_excel(ouaga_queries)
-                        number_of_sections_with_errors += 1
+            #            number_of_sections_with_errors += 1
 
-                return number_of_sections_with_errors
+            #   return number_of_sections_with_errors
             
-            @task.branch
-            def check_number_of_errors(number_of_sections_with_errors):
-                # return the task id that needs to be run
-                if int(number_of_sections_with_errors) < 0: # > original
-                    return 'ouaga.handle_missing_data.copy_queries_generated'
-                else:
-                    return 'ouaga.store_data.load_and_merge_data'
+            # @task.branch
+            # def check_number_of_errors(number_of_sections_with_errors):
+            #     # return the task id that needs to be run
+            #     if int(number_of_sections_with_errors) < 0: # > original
+            #         return 'ouaga.handle_missing_data.copy_queries_generated'
+            #     else:
+            #         return 'ouaga.store_data.load_and_merge_data'
 
-            check_number_of_errors(inspect_missing_data())
+            # check_number_of_errors(inspect_missing_data())
+            inspect_missing_data()
         
         @task_group()
         def handle_missing_data():
             copy_queries_generated = BashOperator(
                 task_id='copy_queries_generated',
-                bash_command="sudo cp /home/ibra/documents/afroscreen/queries/*.xlsx /mnt/hgfs/shared_folder"
+                bash_command="sudo cp /home/ibra/documents/afroscreen/queries/ouaga/*.xlsx /mnt/hgfs/shared_folder/queries/ouaga"
             )
 
             send_queries_by_email = BashOperator(
                 task_id='send_queries_by_email',
-                bash_command="python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/queries'"
+                # PRODUCTION
+                # bash_command="python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r enqueteur1ouagaafroscreen@gmail.com enqueteur2ouagaafroscreen@gmail.com cybar95@gmail.com murielraissa@gmail.com tiandiogo2002@yahoo.fr brahim.oued@gmail.com --p '/home/ibra/documents/afroscreen/queries/ouaga'"
+                # TEST
+                bash_command="python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/queries/ouaga'"
             )
 
             copy_queries_generated  >> send_queries_by_email
@@ -394,7 +408,7 @@ def afroscreen_data_processing():
         def store_data():
             @task()
             def load_and_merge_data():
-                converter = {'Code Echantillon': str, 'Geometry': str, 'COVID Temperature': float}
+                converter = {'Code Echantillon': str, 'COVID Temperature': float}
                 
                 # read all the individual files
                 df_section_1 = pd.read_csv('/home/ibra/documents/afroscreen/clean_data/ouaga/section_1.csv', converters=converter)
@@ -443,9 +457,14 @@ def afroscreen_data_processing():
 
             @task()
             def convert_df_to_sql():
-            
-                df = pd.read_csv('/home/ibra/documents/afroscreen/clean_data/ouaga/merged_dhis2_data.csv')
-                df = df.fillna('NULL')
+                converter_echantillon = {'code_echantillon': str}
+                df = pd.read_csv('/home/ibra/documents/afroscreen/clean_data/ouaga/merged_dhis2_data.csv', converters=converter_echantillon)
+                # create a list of columns to ignore while performing a fillna on text values
+                date_cols = ['date_naissance', 'date_apparition_symptomes', 'date_consultation', 'date_prelevement_echantillon', 'date_debut_traitement']
+                # use the same list of date columns to do a default values 2000-01-01 '2000-01-01 00:00:00.0'
+                df[date_cols] = df[date_cols].fillna('2000-01-01 00:00:00.0')
+                # ignore the list of date elements
+                df = df.fillna('NULL')                
 
                 SOURCE = df
                 TARGET = 'patientsafroscreen'

@@ -7,10 +7,10 @@ DROP TABLE IF EXISTS public.patientsafroscreen;
 CREATE TABLE IF NOT EXISTS public.patientsafroscreen
 (
     patient_id SERIAL NOT NULL,
-    event_date character varying NOT NULL,
-    enrollment_date character varying NOT NULL,
+    event_date DATE NOT NULL,
+    enrollment_date DATE NOT NULL,
     nom_district_sanitaire character varying NOT NULL,
-    incident_date character varying NOT NULL,
+    incident_date DATE NOT NULL,
     numero_semaine character varying NOT NULL,
     numero_cas character varying NOT NULL,
     nom_investigateur character varying NOT NULL,
@@ -20,10 +20,10 @@ CREATE TABLE IF NOT EXISTS public.patientsafroscreen
     numero_passport character varying,
     nom character varying NOT NULL,
     prenom character varying NOT NULL,
-    date_naissance character varying,
-    age_annee character varying NOT NULL,
-    age_mois character varying,
-    age_jour character varying,
+    date_naissance DATE,
+    age_annee SMALLINT NOT NULL,
+    age_mois SMALLINT,
+    age_jour SMALLINT,
     sexe character varying NOT NULL,
     ville_village character varying NOT NULL,
     quartier_secteur character varying NOT NULL,
@@ -43,9 +43,9 @@ CREATE TABLE IF NOT EXISTS public.patientsafroscreen
     hemodialyse character varying,
     voyageur character varying,
     autre_depistage character varying,
-    date_investigation date, --NOT NULL,
-    date_apparition_symptomes character varying NOT NULL,
-    date_consultation character varying NOT NULL,
+    date_investigation DATE, --NOT NULL,
+    date_apparition_symptomes DATE NOT NULL,
+    date_consultation DATE NOT NULL,
     fievre_antecedant_fievre_frissons character varying,
     faiblesse_generale character varying,
     toux character varying,
@@ -91,7 +91,7 @@ CREATE TABLE IF NOT EXISTS public.patientsafroscreen
     traitement_en_cours character varying,
     precision_traitements character varying,
     doses_journalieres character varying,
-    date_debut_traitement character varying,
+    date_debut_traitement DATE,
     date_derniere_dose_traitement character varying,
     provenance character varying,
     statut_matrimonial character varying,
@@ -136,9 +136,8 @@ CREATE TABLE IF NOT EXISTS public.patientsafroscreen
     port_du_masque_14_jours_avant_symptomes character varying,
     hygiene_mains_14_jours_avant_symptomes character varying,
     echantillon_preleve character varying,
-    date_prelevement_echantillon character varying,
+    date_prelevement_echantillon DATE NOT NULL,
     heure_prelevement_echantillon character varying,
-    -- A MAPPER
     date_du_voyage character varying,
     heure_du_voyage character varying,
     manque_de_competence character varying,
@@ -150,7 +149,6 @@ CREATE TABLE IF NOT EXISTS public.patientsafroscreen
     etat_du_malade character varying,
     quittance_prelevement character varying,
     type_de_quittance_prelevement character varying,
-    -- fin de à mapper
     nature_prelevement character varying,
     autre_prelevement character varying,
     nom_prenom_agent_preleveur character varying,
@@ -162,8 +160,8 @@ CREATE TABLE IF NOT EXISTS public.patientsafroscreen
     numero_colis_sonapost character varying,
     consentement_eclaire character varying,
     investigation_realisee character varying, -- field not present in dhis2
-    type_investigation character varying DEFAULT 'isolate', -- can be a isolate investigation or a cluster investigation
-    raison_non_realisation_investigation character varying, -- field not present in dhis2
+    type_investigation character varying DEFAULT 'isolate', -- can be a isolate investigation or a cluster investigation,TODO: we will replace the code echantillon of the investigate cases and populate the pipeline
+    raison_non_realisation_investigation character varying, -- field not present in dhis2 TODO: We will also popluate this one with the give reasons
     -- Grippe
     adenovirus character varying,
     autre_sous_type_influenza character varying,
