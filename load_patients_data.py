@@ -20,8 +20,6 @@ default_args = {
     'start_date': datetime(2022, 2, 10)
 }
 
-
-
 # unique DAG id across your pipelines
 @dag(default_args=default_args, schedule='30 15 * * 4', catchup=False, tags=['Afroscreen'])
 def afroscreen_data_processing():
@@ -166,10 +164,7 @@ def afroscreen_data_processing():
 
             send_queries_by_email = BashOperator(
                 task_id='send_queries_by_email',
-                # PRODUCTION
-                # bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r enqueteur1boboafroscreen@gmail.com enqueteur2boboafroscreen@gmail.com cybar95@gmail.com murielraissa@gmail.com  tiandiogo2002@yahoo.fr brahim.oued@gmail.com --p '/home/ibra/documents/afroscreen/queries/bobo/{current_time}'"
-                # TEST
-                bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/queries/bobo/{current_time}'"
+                bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com --p '/home/ibra/documents/afroscreen/queries/bobo/{current_time}'"
             )
 
             copy_queries_generated  >> send_queries_by_email
@@ -402,9 +397,6 @@ def afroscreen_data_processing():
 
             send_queries_by_email = BashOperator(
                 task_id='send_queries_by_email',
-                # PRODUCTION
-                # bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r enqueteur1ouagaafroscreen@gmail.com enqueteur2ouagaafroscreen@gmail.com cybar95@gmail.com murielraissa@gmail.com tiandiogo2002@yahoo.fr brahim.oued@gmail.com --p '/home/ibra/documents/afroscreen/queries/ouaga/{current_time}'"
-                # TEST
                 bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/queries/ouaga/{current_time}'"
             )
 
