@@ -8,10 +8,9 @@ from email.mime.text import MIMEText
 import os
 
 def main(recipients, server, port, from_email, password, attachments_path:str):
-    print(f'With love, from {from_email} to {recipients}')
     # Create the message
-    subject = 'With love, from ME to YOU'
-    text = '''This is an example test'''
+    subject = 'Données pour correction via queries AFROSCREEN'
+    text = '''Bonjour, veuillez prendre connaissance des données manquantes générées par les queries. Cordialement!'''
     
     msg = MIMEMultipart()
 
