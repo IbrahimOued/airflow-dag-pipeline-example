@@ -10,6 +10,7 @@ from database.transformed_columns import transformed_columns
 import os
 from pathlib import Path
 import pandas as pd
+import sqlalchemy
 import numpy as np
 import time
 from datetime import datetime, timedelta
@@ -19,10 +20,12 @@ default_args = {
     'start_date': datetime(2022, 2, 10)
 }
 
-# unique DAG id across your pipelines
-@dag(default_args=default_args, schedule='@daily', catchup=False, tags=['Afroscreen'])
-def afroscreen_data_processing():
 
+
+# unique DAG id across your pipelines
+@dag(default_args=default_args, schedule='30 15 * * 4', catchup=False, tags=['Afroscreen'])
+def afroscreen_data_processing():
+    current_time = time.strftime('%Y%m%d')
     @task_group()
     def bobo():
         @task_group()
@@ -133,8 +136,9 @@ def afroscreen_data_processing():
                     section = f"Section {i+1}"
                     section_queries = query_missing_data(path=path, section=section)
                     if len(section_queries) > 0:
-                        outname = f"queries_bobo_section_{i+1}_{time.strftime('%Y%m%d')}.xlsx"
-                        outdir = '/home/ibra/documents/afroscreen/queries/bobo'
+                        outname = f"queries_bobo_section_{i+1}_{current_time}.xlsx"
+                        # create a new folder for every queries
+                        outdir = f'/home/ibra/documents/afroscreen/queries/bobo/{current_time}'
                         Path(outdir).mkdir(parents=True, exist_ok=True)
                         bobo_queries = os.path.join(outdir, outname)    
                         section_queries.to_excel(bobo_queries)
@@ -157,15 +161,15 @@ def afroscreen_data_processing():
         def handle_missing_data():
             copy_queries_generated = BashOperator(
                 task_id='copy_queries_generated',
-                bash_command="sudo cp /home/ibra/documents/afroscreen/queries/bobo/*.xlsx /mnt/hgfs/shared_folder/queries/bobo"
+                bash_command=f"sudo cp /home/ibra/documents/afroscreen/queries/bobo/{current_time}/*.xlsx /mnt/hgfs/shared_folder/queries/bobo"
             )
 
             send_queries_by_email = BashOperator(
                 task_id='send_queries_by_email',
                 # PRODUCTION
-                # bash_command="python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r enqueteur1boboafroscreen@gmail.com enqueteur2boboafroscreen@gmail.com cybar95@gmail.com murielraissa@gmail.com  tiandiogo2002@yahoo.fr brahim.oued@gmail.com --p '/home/ibra/documents/afroscreen/queries/bobo'"
+                # bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r enqueteur1boboafroscreen@gmail.com enqueteur2boboafroscreen@gmail.com cybar95@gmail.com murielraissa@gmail.com  tiandiogo2002@yahoo.fr brahim.oued@gmail.com --p '/home/ibra/documents/afroscreen/queries/bobo/{current_time}'"
                 # TEST
-                bash_command="python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/queries/bobo'"
+                bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/queries/bobo/{current_time}'"
             )
 
             copy_queries_generated  >> send_queries_by_email
@@ -257,6 +261,7 @@ def afroscreen_data_processing():
     # OUAGA
     @task_group()
     def ouaga():
+        # current_time = time.strftime('%Y%m%d')
         @task_group()
         def import_data():
             is_ouaga_path_available = FileSensor(
@@ -358,7 +363,7 @@ def afroscreen_data_processing():
                 section_9_path = os.path.join(clean_data_dir, "section_9.csv")
                 section_10_path = os.path.join(clean_data_dir, "section_10.csv")
                 
-            #    number_of_sections_with_errors = 0
+            #   number_of_sections_with_errors = 0
                 
                 sections_path = [section_1_path, section_2_path, section_3_path, section_4_path, section_5_path, section_6_path, section_7_path, section_8_path, section_9_path, section_10_path]
 
@@ -366,8 +371,10 @@ def afroscreen_data_processing():
                     section = f"Section {i+1}"
                     section_queries = query_missing_data(path=path, section=section)
                     if len(section_queries) > 0:
-                        outname = f"queries_ouaga_section_{i+1}_{time.strftime('%Y%m%d')}.xlsx"
-                        outdir = '/home/ibra/documents/afroscreen/queries/ouaga'
+                        outname = f"queries_ouaga_section_{i+1}_{current_time}.xlsx"
+                        # new folder for every queries produced for ouaga as well
+                        outdir = f'/home/ibra/documents/afroscreen/queries/ouaga/{current_time}'
+
                         Path(outdir).mkdir(parents=True, exist_ok=True)                            
                         ouaga_queries = os.path.join(outdir, outname)    
                         section_queries.to_excel(ouaga_queries)
@@ -390,15 +397,15 @@ def afroscreen_data_processing():
         def handle_missing_data():
             copy_queries_generated = BashOperator(
                 task_id='copy_queries_generated',
-                bash_command="sudo cp /home/ibra/documents/afroscreen/queries/ouaga/*.xlsx /mnt/hgfs/shared_folder/queries/ouaga"
+                bash_command=f"sudo cp /home/ibra/documents/afroscreen/queries/ouaga/{current_time}/*.xlsx /mnt/hgfs/shared_folder/queries/ouaga"
             )
 
             send_queries_by_email = BashOperator(
                 task_id='send_queries_by_email',
                 # PRODUCTION
-                # bash_command="python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r enqueteur1ouagaafroscreen@gmail.com enqueteur2ouagaafroscreen@gmail.com cybar95@gmail.com murielraissa@gmail.com tiandiogo2002@yahoo.fr brahim.oued@gmail.com --p '/home/ibra/documents/afroscreen/queries/ouaga'"
+                # bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r enqueteur1ouagaafroscreen@gmail.com enqueteur2ouagaafroscreen@gmail.com cybar95@gmail.com murielraissa@gmail.com tiandiogo2002@yahoo.fr brahim.oued@gmail.com --p '/home/ibra/documents/afroscreen/queries/ouaga/{current_time}'"
                 # TEST
-                bash_command="python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/queries/ouaga'"
+                bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/queries/ouaga/{current_time}'"
             )
 
             copy_queries_generated  >> send_queries_by_email
@@ -488,9 +495,31 @@ def afroscreen_data_processing():
             load_and_merge_data() >> convert_df_to_sql
 
         import_data() >> process_data() >> [handle_missing_data(), store_data()]
+        
+    # @task_group()
+    # def final_operation():
+    #     @task()
+    #     def data_exportation():
+    #         engine = sqlalchemy.create_engine(
+    #             "postgresql://projet_afroscreen:AFROSCREEN2022"
+    #             "@localhost:5432/afroscreen")
+
+    #         df = pd.read_sql("SELECT * FROM patientsafroscreen", engine)
+    #         print(df.head())
+    #         df.to_excel(f"/mnt/hgfs/shared_folder/final_data/afroscreen_{current_time}.xlsx")
+
+    #     send_final_data_by_email = BashOperator(
+    #         task_id='send_final_data_by_email',
+    #         # PRODUCTION
+    #         # bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r enqueteur1ouagaafroscreen@gmail.com enqueteur2ouagaafroscreen@gmail.com cybar95@gmail.com murielraissa@gmail.com tiandiogo2002@yahoo.fr brahim.oued@gmail.com --p '/home/ibra/documents/afroscreen/final_data/{current_time}'"
+    #         # TEST
+    #         bash_command=f"python3 /home/ibra/documents/airflow/dags/send_email/send_email.py -c /home/ibra/documents/airflow/dags/send_email/email_conf.ini --r brahim.oued@gmail.com ibra.oued@outlook.com --p '/home/ibra/documents/afroscreen/final_data/{current_time}'"
+    #     )
+    
+    #     data_exportation() >> send_final_data_by_email
     
     # Removed the brackets
-    bobo() >> ouaga()
+    bobo() >> ouaga()# >> final_operation()
 
 
 afroscreen_data_processing = afroscreen_data_processing()

@@ -69,6 +69,10 @@ def query_missing_data(path: str, section: str):
     iter_csv[["Event date", "Enrollment date"]] = iter_csv[["Event date", "Enrollment date"]].apply(pd.to_datetime)
     df = iter_csv[(iter_csv['Event date'] > datetime(2022, 9, 9)) & (iter_csv['Nom de l\'investigateur'].isin(investigateurs))]
 
+    # will be used to check the missing data of the sections 6, 7, 8, 9 and 10
+    df_labo_path = '/home/ibra/documents/afroscreen/clean_data/bobo/section_5.csv'
+    df_labo = pd.read_csv(df_labo_path, converters=converter)
+
     df_queries = pd.DataFrame(columns=['Code Echantillon', 'Nom de l\'investigateur', 'District sanitaire', 'Valeur actuelle', 'Erreurs/Confirmations', 'Actions', 'Section', 'Valeur souhaitée', 'Observations'])
     # iterate through each row and select
     for i in df.index:
@@ -370,6 +374,7 @@ def query_missing_data(path: str, section: str):
                     'Code Echantillon' : [df['Code Echantillon'][i]],
                     'Nom de l\'investigateur' : df['Nom de l\'investigateur'][i],
                     'District sanitaire': df['Organisation unit name'][i],
+                    'Date de reception' : df['COVID Date de reception'][i],
                     'Valeur actuelle' : df['COVID Resultat labo'][i],
                     'Erreurs/Confirmations' : 'Pas de resultat labo',
                     'Actions' : 'Renseigner le resultat du patient',
@@ -378,5 +383,173 @@ def query_missing_data(path: str, section: str):
                     'Observations': ''
                 })
                 df_queries = pd.concat([df_queries, res_labo_query], ignore_index=True)
+
+        elif section == 'Section 6':
+            # =========================== Check du resultat de labo grippe =============================
+            # if df['Résultats de la PCR pour influenza'][i] is np.nan:
+            #     res_labo_query = pd.DataFrame(data={
+            #         'Code Echantillon' : [df['Code Echantillon'][i]],
+            #         'Nom de l\'investigateur' : df['Nom de l\'investigateur'][i],
+            #         'District sanitaire': df['Organisation unit name'][i],
+            #         'Valeur actuelle' : df['COVID Resultat labo LNRG'][i],
+            #         'Erreurs/Confirmations' : 'Pas de resultat Grippe',
+            #         'Actions' : 'Renseigner le resultat du patient',
+            #         'Section' : section,
+            #         'Valeur souhaitée': 'Positif, Négatif',
+            #         'Observations': ''
+            #     })
+            #     df_queries = pd.concat([df_queries, res_labo_query], ignore_index=True)
+
+            # =========================== Check du resultat de labo grippe sous typage =============================
+            if df['Résultat de sous-typage'][i] is np.nan:
+                res_labo_lnrg_query = pd.DataFrame(data={
+                    'Code Echantillon' : [df['Code Echantillon'][i]],
+                    'Nom de l\'investigateur' : df['Nom de l\'investigateur'][i],
+                    'District sanitaire': df['Organisation unit name'][i],
+                    'Date de reception' : df['Date et heure de réception de l’échantillon'][i],
+                    'Valeur actuelle' : df['Résultat de sous-typage'][i],
+                    'Erreurs/Confirmations' : 'Pas de resultat Grippe sous typage',
+                    'Actions' : 'Renseigner le resultat du patient',
+                    'Section' : section,
+                    'Valeur souhaitée': 'Positif, Négatif',
+                    'Observations': ''
+                })
+                df_queries = pd.concat([df_queries, res_labo_lnrg_query], ignore_index=True)
+
+            # =========================== Check du resultat de labo grippe sous typage =============================
+            if df['Résultat de sous-typage'][i] is 'Positif' and df['Type de sous typage'][i] is np.nan:
+                sous_typage_query = pd.DataFrame(data={
+                    'Code Echantillon' : [df['Code Echantillon'][i]],
+                    'Nom de l\'investigateur' : df['Nom de l\'investigateur'][i],
+                    'District sanitaire': df['Organisation unit name'][i],
+                    'Date de reception' : df['Date et heure de réception de l’échantillon'][i],
+                    'Valeur actuelle' : df['Type de sous typage'][i],
+                    'Erreurs/Confirmations' : 'Préciser le type de sous typage',
+                    'Actions' : 'Renseigner le type de sous type',
+                    'Section' : section,
+                    'Valeur souhaitée': 'Sous typage',
+                    'Observations': ''
+                })
+                df_queries = pd.concat([df_queries, sous_typage_query], ignore_index=True)            
+
+
+        # TODO: Utiliser l'issue du patient pour voir les cas positifs non investigués
+        elif section == 'Section 7':
+            # if df_labo[(df_labo['Code Echantillon'] == df['Code Echantillon'][i])]['COVID Resultat labo'][i] != 'Positif':
+            # sec7_df = df_labo[(df_labo['Code Echantillon'] == df['Code Echantillon'][i])]['COVID Resultat labo'][i]
+            resultats_labo_df = df_labo[df_labo['Code Echantillon'] == df['Code Echantillon'][i]]
+            print(resultats_labo_df)
+            # Return the first element of the underlying data as a Python scalar.
+
+            # if len(resultats_labo_df) == 1 and resultats_labo_df['COVID Resultat labo'].item():
+            #     break
+            # else:
+            # if len(resultats_labo_df) > 0:
+            controls = resultats_labo_df[resultats_labo_df['COVID Resultat labo'] == 'Positif']['COVID Resultat labo'].to_list() 
+            for resultat in controls:
+                if resultat == 'Positif' and df['COVID Asthme'][i] is np.nan:
+                    # =========================== Check du des sections des investigués =============================
+                    asthme_query = pd.DataFrame(data={
+                        'Code Echantillon' : [df['Code Echantillon'][i]],
+                        'Nom de l\'investigateur' : df['Nom de l\'investigateur'][i],
+                        'District sanitaire': df['Organisation unit name'][i],
+                        'Valeur actuelle' : df['COVID Asthme'][i],
+                        'Erreurs/Confirmations' : 'Pas d\'information sur l\'asthme',
+                        'Actions' : 'Renseigner si présence d\'asthme ou pas',
+                        'Section' : section,
+                        'Valeur souhaitée': 'Oui ou Non',
+                        'Observations': ''
+                    })
+                    df_queries = pd.concat([df_queries, asthme_query], ignore_index=True)
+                    
+                if resultat == 'Positif' and df['COVID Cardiopathie'][i] is np.nan:
+                    # =========================== Check du cardiopathie =============================
+                    cardiopathie_query = pd.DataFrame(data={
+                        'Code Echantillon' : [df['Code Echantillon'][i]],
+                        'Nom de l\'investigateur' : df['Nom de l\'investigateur'][i],
+                        'District sanitaire': df['Organisation unit name'][i],
+                        'Valeur actuelle' : df['COVID Cardiopathie'][i],
+                        'Erreurs/Confirmations' : 'Pas d\'information cardiopathie',
+                        'Actions' : 'Renseigner si présence d\'une cardiopathie',
+                        'Section' : section,
+                        'Valeur souhaitée': 'Oui ou Non',
+                        'Observations': ''
+                    })
+                    df_queries = pd.concat([df_queries, cardiopathie_query], ignore_index=True)
+
+                if resultat == 'Positif' and df['COVID Diabete'][i] is np.nan:
+                    # =========================== Check du diabete =============================
+                    diabete_query = pd.DataFrame(data={
+                        'Code Echantillon' : [df['Code Echantillon'][i]],
+                        'Nom de l\'investigateur' : df['Nom de l\'investigateur'][i],
+                        'District sanitaire': df['Organisation unit name'][i],
+                        'Valeur actuelle' : df['COVID Diabete'][i],
+                        'Erreurs/Confirmations' : 'Pas d\'information de diabète',
+                        'Actions' : 'Renseigner si présence d\'un diabète',
+                        'Section' : section,
+                        'Valeur souhaitée': 'Oui ou Non',
+                        'Observations': ''
+                    })
+                    df_queries = pd.concat([df_queries, diabete_query], ignore_index=True)
+
+                if resultat == 'Positif' and df['COVID Diabete'][i] == 'Oui' and df['COVID Type de diabete'] is np.nan:
+                    # =========================== Check du type de diabète =============================
+                    type_diab_query = pd.DataFrame(data={
+                        'Code Echantillon' : [df['Code Echantillon'][i]],
+                        'Nom de l\'investigateur' : df['Nom de l\'investigateur'][i],
+                        'District sanitaire': df['Organisation unit name'][i],
+                        'Valeur actuelle' : df['COVID Type de diabete'][i],
+                        'Erreurs/Confirmations' : 'Pas d\'information sur le type de diabète',
+                        'Actions' : 'Renseigner le type de diabète',
+                        'Section' : section,
+                        'Valeur souhaitée': 'exemple : SUCRE NON COMPLIQUE',
+                        'Observations': ''
+                    })
+                    df_queries = pd.concat([df_queries, type_diab_query], ignore_index=True)
+
+
+                if resultat == 'Positif' and df['COVID Diabete'][i] == 'Non' and df['COVID Type de diabete'] is np.nan:
+                    # =========================== Check du type de diabète inversé =============================
+                    diabete_to_yes_query = pd.DataFrame(data={
+                        'Code Echantillon' : [df['Code Echantillon'][i]],
+                        'Nom de l\'investigateur' : df['Nom de l\'investigateur'][i],
+                        'District sanitaire': df['Organisation unit name'][i],
+                        'Valeur actuelle' : df['COVID Diabete'][i],
+                        'Erreurs/Confirmations' : 'Type de diabète donné mais diabète à Non',
+                        'Actions' : 'Changer le diabète en Oui',
+                        'Section' : section,
+                        'Valeur souhaitée': 'Oui dans le champ diabète',
+                        'Observations': ''
+                    })
+                    df_queries = pd.concat([df_queries, diabete_to_yes_query], ignore_index=True)
+
+        # COVID Asthme,COVID Autres Antecedents,COVID Cardiopathie,COVID Date d'admission,COVID Demence,COVID Denutrition,COVID Diabete,COVID Fumeur,COVID Heure d'admission,COVID Maladie cardiovasculaire incluant HTA,COVID Preciser Autres Antecedents,COVID Structure de reference,COVID Structure de soins,COVID Transfusion,COVID Tumeur maligne,COVID Type de diabete,COVID Type de hepathopathie,COVID VIH-SIDA,COVID maladie rhumatologique,COVID maladie_hematologique_chronique,COVID obesite
+
+
+        # TODO: Utiliser l'issue du patient pour voir les cas positifs non investigués
+        # elif section == 'Section 6':
+        #     if df['COVID Resultat labo'][i] != 'Positif':
+        #         # =========================== Check du des sections des investigués =============================
+        #         break
+
+        # elif section == 'Section 7':
+        #     if df['COVID Resultat labo'][i] != 'Positif':
+        #         # =========================== Check du des sections des investigués =============================
+        #         break
+
+        # elif section == 'Section 8':
+        #     if df['COVID Resultat labo'][i] != 'Positif':
+        #         # =========================== Check du des sections des investigués =============================
+        #         break
+
+        # elif section == 'Section 9':
+        #     if df['COVID Resultat labo'][i] != 'Positif':
+        #         # =========================== Check du des sections des investigués =============================
+        #         break
+
+        # elif section == 'Section 10':
+        #     if df['COVID Resultat labo'][i] != 'Positif':
+        #         # =========================== Check du des sections des investigués =============================
+        #         break
 
     return df_queries
